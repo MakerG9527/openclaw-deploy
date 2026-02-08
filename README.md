@@ -4,6 +4,24 @@
 
 ## 快速开始
 
+### 0. 准备工作
+
+首先需要安装OpenClaw和Ollama(可选)
+
+#### 安装OpenClaw
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+可参考官网教程 <https://docs.openclaw.ai/start/getting-started>
+
+#### 安装Ollama
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+可参考官网教程 <https://github.com/ollama/ollama> <https://ollama.com>
+
 ### 1. 下载到目标服务器
 
 ```bash
