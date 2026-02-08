@@ -1,6 +1,6 @@
 # OpenClaw 快速部署包
 
-用于在新服务器上快速部署 OpenClaw + Mihomo 环境。
+用于在新服务器上快速部署 Mihomo(VPN) + OpenClaw 环境, 支持使用Ollama调用本地模型。
 
 ## 快速开始
 
