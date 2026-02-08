@@ -4,16 +4,11 @@
 
 ## 快速开始
 
-### 1. 解压到目标服务器
+### 1. 下载到目标服务器
 
 ```bash
-# 复制到目标服务器
-scp openclaw-migration-*.tar.gz user@new-server:~/
-
-# 登录目标服务器并解压
-ssh user@new-server
-tar xzf openclaw-migration-*.tar.gz
-cd openclaw/  # 或解压后的目录
+git clone git clone https://github.com/MakerG9527/openclaw-deploy.git
+mv openclaw-deploy openclaw
 ```
 
 ### 2. 运行交互式配置
