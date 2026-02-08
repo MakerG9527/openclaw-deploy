@@ -1,0 +1,21 @@
+============================================
+OpenClaw 快速部署
+============================================
+
+1. 运行交互式配置
+   ./setup.sh
+
+2. 安装 Mihomo（自动或手动模式）
+   ./install-mihomo.sh
+
+3. 添加代理订阅
+   ./mihomo-sub.sh
+
+4. 启动服务
+   source ~/.bashrc
+   claw-up
+
+5. 验证
+   claw-check
+
+详细说明请查看 README.md
