@@ -10,7 +10,7 @@ banner "服务状态"
 echo "📡 Mihomo 代理:"
 if is_running "mihomo"; then
     log "运行中 (PID: $(get_pid mihomo))"
-    info "HTTP代理: $HTTP_PROXY"
+    info "HTTP代理: ${HTTP_PROXY:-}"
     info "Socks代理: http://127.0.0.1:${MIHOMO_SOCKS_PORT:-7891}"
     info "控制器: http://${MIHOMO_CONTROLLER:-127.0.0.1:9090}"
     

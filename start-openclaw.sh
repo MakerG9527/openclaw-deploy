@@ -1,5 +1,5 @@
 #!/bin/bash
-# OpenClaw 启动脚本（优化版，可迁移）
+# OpenClaw 启动脚本（已修复代理支持 - ES 模块版）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
@@ -31,23 +31,30 @@ fi
 
 OPENCLAW_CMD="${OPENCLAW_BIN:-$(command -v openclaw)}"
 
-# 设置代理环境
-export HTTP_PROXY HTTPS_PROXY http_proxy https_proxy
-export NODE_TLS_REJECT_UNAUTHORIZED
+# 设置代理环境变量（用于 curl 等传统工具）
+export HTTP_PROXY="http://127.0.0.1:7890"
+export HTTPS_PROXY="http://127.0.0.1:7890"
+export http_proxy="http://127.0.0.1:7890"
+export https_proxy="http://127.0.0.1:7890"
 
-# OLLAMA_HOST 可选（如果使用 Ollama）
-if [ -n "${OLLAMA_HOST:-}" ]; then
-    export OLLAMA_HOST
-fi
+# 设置 Node.js ES 模块代理 bootstrap
+export NODE_PATH="/usr/lib/node_modules/openclaw/node_modules"
+export NODE_OPTIONS="--import=/root/openclaw/proxy-bootstrap.mjs"
 
 info "环境变量已设置"
+info "HTTP_PROXY: $HTTP_PROXY"
+info "NODE_OPTIONS: $NODE_OPTIONS"
+
+# OLLAMA_HOST 可选
 if [ -n "${OLLAMA_HOST:-}" ]; then
+    export OLLAMA_HOST
     info "OLLAMA_HOST: $OLLAMA_HOST"
 else
     info "OLLAMA_HOST: 未配置（使用 API 模式）"
 fi
+
 info "等待代理就绪..."
-sleep 3
+sleep 2
 
 # 创建日志目录
 mkdir -p "$LOG_DIR"
@@ -57,7 +64,7 @@ if [ -f "$LOG_DIR/openclaw.log" ]; then
     mv "$LOG_DIR/openclaw.log" "$LOG_DIR/openclaw.log.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
 fi
 
-# 测试 Telegram API（可选）
+# 测试 Telegram API
 info "测试 Telegram API..."
 if curl -s --proxy "$HTTP_PROXY" --connect-timeout 5 \
     "https://api.telegram.org" > /dev/null 2>&1; then
@@ -66,13 +73,17 @@ else
     warn "Telegram API 测试失败，继续启动..."
 fi
 
-# 启动 OpenClaw
+# 启动 OpenClaw（带代理配置）
 info "启动 OpenClaw..."
-nohup "$OPENCLAW_CMD" gateway > "$LOG_DIR/openclaw.log" 2>&1 &
+env HTTP_PROXY="http://127.0.0.1:7890" \
+    HTTPS_PROXY="http://127.0.0.1:7890" \
+    NODE_PATH="/usr/lib/node_modules/openclaw/node_modules" \
+    NODE_OPTIONS="--import=/root/openclaw/proxy-bootstrap.mjs" \
+    nohup "$OPENCLAW_CMD" gateway > "$LOG_DIR/openclaw.log" 2>&1 &
 
 # 等待就绪
 info "等待初始化..."
-for i in $(seq 1 20); do
+for i in $(seq 1 30); do
     sleep 1
     if "$OPENCLAW_CMD" health 2>/dev/null | grep -q "Telegram:"; then
         log "OpenClaw 启动成功"
