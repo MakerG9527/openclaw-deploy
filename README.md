@@ -1,19 +1,32 @@
 # OpenClaw 快速部署包
 
-用于在新服务器上快速部署 OpenClaw + Mihomo 环境。
+用于在新服务器上快速部署 Mihomo(VPN) + OpenClaw 环境, 支持使用Ollama调用本地模型。
 
 ## 快速开始
 
-### 1. 解压到目标服务器
+### 0. 准备工作
+
+首先需要安装OpenClaw和Ollama(可选)
+
+#### 安装OpenClaw
 
 ```bash
-# 复制到目标服务器
-scp openclaw-migration-*.tar.gz user@new-server:~/
+curl -fsSL https://openclaw.ai/install.sh | bash
+```
+可参考官网教程 <https://docs.openclaw.ai/start/getting-started>
 
-# 登录目标服务器并解压
-ssh user@new-server
-tar xzf openclaw-migration-*.tar.gz
-cd openclaw/  # 或解压后的目录
+#### 安装Ollama
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+可参考官网教程 <https://github.com/ollama/ollama> <https://ollama.com>
+
+### 1. 下载到目标服务器
+
+```bash
+git clone git clone https://github.com/MakerG9527/openclaw-deploy.git
+mv openclaw-deploy openclaw
 ```
 
 ### 2. 运行交互式配置
