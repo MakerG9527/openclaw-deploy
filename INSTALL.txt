@@ -1,21 +1,64 @@
 ============================================
-OpenClaw 快速部署
+OpenClaw 快速部署 - 安装指南
 ============================================
 
-1. 运行交互式配置
+⚡ 自动路径识别版 - 支持任意服务器部署
+
+1. 克隆部署包
+   git clone https://github.com/MakerG9527/openclaw-deploy.git openclaw
+   cd openclaw
+
+2. 运行交互式配置
    ./setup.sh
 
-2. 安装 Mihomo（自动或手动模式）
+3. 安装 Mihomo（如未安装）
    ./install-mihomo.sh
 
-3. 添加代理订阅
+4. 添加代理订阅
    ./mihomo-sub.sh
 
-4. 启动服务
+5. 启动服务
    source ~/.bashrc
    claw-up
 
-5. 验证
+6. 验证部署
    claw-check
 
-详细说明请查看 README.md
+============================================
+新特性：自动路径识别
+============================================
+
+本版本已优化为支持任意服务器部署：
+
+• start-openclaw.sh
+  - 自动检测 openclaw 命令路径
+  - 支持 ~/.npm-global/bin、/usr/local/bin、/usr/bin 等
+
+• proxy-bootstrap.mjs
+  - 自动查找 undici 模块路径
+  - 通过 npm root -g 和多路径尝试机制
+
+无需手动修改任何硬编码路径！
+
+============================================
+快捷命令（配置后可用）
+============================================
+
+claw-up        启动所有服务
+claw-down      停止所有服务
+claw-restart   重启所有服务
+claw-ps        查看服务状态
+claw-check     健康检查
+claw-log       查看 OpenClaw 日志
+mih-log        查看 Mihomo 日志
+mih-sub        管理代理订阅
+
+============================================
+详细说明
+============================================
+
+请查看 README.md 获取完整文档：
+  cat README.md
+
+或访问项目主页：
+  https://github.com/MakerG9527/openclaw-deploy
