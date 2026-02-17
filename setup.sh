@@ -129,17 +129,21 @@ echo "----------------------------------------"
 echo "请选择要使用的 AI 模型来源："
 echo ""
 echo "  1) 使用 Ollama（本地或远程部署的模型）"
-echo "  2) 跳过 Ollama，只使用 API（如 Moonshot/Kimi）"
+echo "  2) 使用 vLLM（高性能推理服务）"
+echo "  3) 跳过本地模型，只使用 API（如 Moonshot/Kimi）"
 echo ""
 
-read -p "选择 [1/2] (默认: 1): " MODEL_SOURCE
+read -p "选择 [1/2/3] (默认: 1): " MODEL_SOURCE
 MODEL_SOURCE="${MODEL_SOURCE:-1}"
 
 USE_OLLAMA=false
+USE_VLLM=false
 OLLAMA_HOST="127.0.0.1:11434"
+VLLM_HOST="127.0.0.1:8000"
 DEFAULT_MODEL="moonshot/kimi-k2.5"
 
 if [ "$MODEL_SOURCE" = "1" ]; then
+    # ========== Ollama 配置 ==========
     USE_OLLAMA=true
     echo ""
     echo "配置 Ollama 服务器:"
@@ -165,11 +169,51 @@ if [ "$MODEL_SOURCE" = "1" ]; then
             exit 1
         fi
     fi
-else
+
+elif [ "$MODEL_SOURCE" = "2" ]; then
+    # ========== vLLM 配置 ==========
+    USE_VLLM=true
     echo ""
-    log "跳过 Ollama 配置"
+    echo "配置 vLLM 服务器:"
+    echo "  vLLM 是一个高性能的大模型推理和服务框架"
+    echo "  可以部署在本地 (127.0.0.1:8000) 或远程服务器"
+    echo ""
+    
+    VLLM_HOST=$(ask "vLLM 服务器地址" "127.0.0.1:8000")
+    
+    # 测试连接
+    info "测试 vLLM 连接..."
+    if curl -s --connect-timeout 5 "http://$VLLM_HOST/v1/models" > /dev/null 2>&1; then
+        log "vLLM 连接成功"
+        MODELS=$(curl -s "http://$VLLM_HOST/v1/models" 2>/dev/null | grep -o '"id":"[^"]*"' | cut -d'"' -f4 | head -5)
+        if [ -n "$MODELS" ]; then
+            info "可用模型:"
+            echo "$MODELS" | sed 's/^/  - /'
+            DEFAULT_MODEL=$(echo "$MODELS" | head -1)
+        else
+            DEFAULT_MODEL=$(ask "默认模型名称" "vllm/Qwen2.5-7B-Instruct")
+        fi
+    else
+        warn "无法连接到 vLLM ($VLLM_HOST)"
+        warn "请确保 vLLM 服务已启动: python -m vllm.entrypoints.openai.api_server"
+        if ! ask_yesno "是否继续配置?"; then
+            exit 1
+        fi
+        DEFAULT_MODEL=$(ask "默认模型名称" "vllm/Qwen2.5-7B-Instruct")
+    fi
+    
+    # 询问 API 密钥（可选）
+    echo ""
+    info "vLLM API 密钥（如果配置了认证）"
+    VLLM_API_KEY=$(ask "API 密钥（留空表示无认证）" "")
+
+else
+    # ========== API 模式 ==========
+    echo ""
+    log "跳过本地模型配置"
     info "将使用 API 方式访问 AI 模型（如 Moonshot/Kimi）"
     OLLAMA_HOST=""
+    VLLM_HOST=""
 fi
 
 echo ""
@@ -194,6 +238,12 @@ if [ "$USE_OLLAMA" = true ]; then
     echo "请从上面列出的可用模型中选择一个作为默认模型"
     echo ""
     DEFAULT_MODEL=$(ask "默认模型名称" "$DEFAULT_MODEL")
+elif [ "$USE_VLLM" = true ]; then
+    echo "请配置要使用的 vLLM 模型:"
+    echo "  格式: vllm/model-name"
+    echo "  示例: vllm/Qwen2.5-7B-Instruct, vllm/llama-3-8b"
+    echo ""
+    DEFAULT_MODEL=$(ask "默认模型" "$DEFAULT_MODEL")
 else
     echo "请配置要使用的 API 模型:"
     echo "  格式: provider/model-name"
@@ -216,22 +266,48 @@ mkdir -p "$HOME/.local/log"
 # 生成 .env 文件
 info "生成环境变量配置..."
 
-# 根据是否使用 Ollama 生成不同内容
-if [ "$USE_OLLAMA" = true ]; then
-    OLLAMA_CONFIG="OLLAMA_HOST=http://$OLLAMA_HOST"
-else
-    OLLAMA_CONFIG="# OLLAMA_HOST=  # 未使用 Ollama，使用 API 模式"
-fi
-
+# 根据选择生成不同内容
 cat > "$SCRIPT_DIR/.env" << EOF
 # OpenClaw + Mihomo 环境变量配置
 # 生成时间: $(date)
 # 使用 Ollama: $USE_OLLAMA
+# 使用 vLLM: $USE_VLLM
 
 # ============================================
 # Ollama 配置
 # ============================================
-$OLLAMA_CONFIG
+EOF
+
+if [ "$USE_OLLAMA" = true ]; then
+    cat >> "$SCRIPT_DIR/.env" << EOF
+OLLAMA_HOST=http://$OLLAMA_HOST
+EOF
+else
+    cat >> "$SCRIPT_DIR/.env" << EOF
+# OLLAMA_HOST=  # 未使用 Ollama
+EOF
+fi
+
+cat >> "$SCRIPT_DIR/.env" << EOF
+
+# ============================================
+# vLLM 配置
+# ============================================
+EOF
+
+if [ "$USE_VLLM" = true ]; then
+    cat >> "$SCRIPT_DIR/.env" << EOF
+VLLM_HOST=http://$VLLM_HOST
+VLLM_API_KEY=${VLLM_API_KEY:-}
+EOF
+else
+    cat >> "$SCRIPT_DIR/.env" << EOF
+# VLLM_HOST=  # 未使用 vLLM
+# VLLM_API_KEY=
+EOF
+fi
+
+cat >> "$SCRIPT_DIR/.env" << EOF
 
 # ============================================
 # Mihomo 代理配置
@@ -321,16 +397,21 @@ alias claw-model='$HOME/openclaw/switch-model.sh'
 alias claw-models='$HOME/openclaw/switch-model.sh -l'
 alias claw-host='$HOME/openclaw/switch-ollama-host.sh'
 
+# vLLM 控制（如果配置了）
+alias vllm-up='echo "请手动启动: python -m vllm.entrypoints.openai.api_server --model <模型名>"'
+alias test-vllm='curl -s $VLLM_HOST/v1/models 2>/dev/null | grep -o '"'"'"id":"[^"]*"'"'"' | head -3'
+
 # Mihomo 代理控制
 alias mih-up='$HOME/openclaw/start-mihomo.sh'
-alias mih-down='$HOME/openclaw/stop-all.sh'
+alias mih-down='pkill mihomo 2>/dev/null || true'
 alias mih-restart='pkill mihomo 2>/dev/null; sleep 1; $HOME/openclaw/start-mihomo.sh'
 alias mih-sub='$HOME/openclaw/mihomo-sub.sh'
 alias mih-config='${EDITOR:-nano} $HOME/.config/mihomo/config.yaml'
 
 # 快速测试
 alias test-proxy='curl --proxy http://127.0.0.1:7890 -s https://www.google.com -o /dev/null -w "HTTP %{http_code}\n"'
-alias test-ollama='curl -s $OLLAMA_HOST/api/tags 2>/dev/null | grep -o '"'"'"name":"[^"]*"'"'"' | head -3'
+alias test-ollama='curl -s ${OLLAMA_HOST:-http://127.0.0.1:11434}/api/tags 2>/dev/null | grep -o '"'"'"name":"[^"]*"'"'"' | head -3'
+alias test-vllm='curl -s ${VLLM_HOST:-http://127.0.0.1:8000}/v1/models 2>/dev/null | grep -o '"'"'"id":"[^"]*"'"'"' | head -3'
 
 # 编辑配置
 alias claw-env='${EDITOR:-nano} $HOME/openclaw/.env'
@@ -352,12 +433,25 @@ echo "配置文件:"
 echo "  - 环境变量: $SCRIPT_DIR/.env"
 echo "  - Mihomo配置: $HOME/.config/mihomo/config.yaml"
 echo ""
+
+if [ "$USE_VLLM" = true ]; then
+    echo "vLLM 配置:"
+    echo "  - 服务器: http://$VLLM_HOST"
+    echo "  - 默认模型: $DEFAULT_MODEL"
+    if [ -n "$VLLM_API_KEY" ]; then
+        echo "  - API 密钥: 已配置"
+    fi
+    echo ""
+    echo "启动 vLLM 示例:"
+    echo "  python -m vllm.entrypoints.openai.api_server --model <模型路径> --port 8000"
+    echo ""
+fi
+
 echo "下一步:"
 echo ""
 if ! command -v mihomo &> /dev/null; then
     echo "  1. 安装 Mihomo:"
     echo "     ./install-mihomo.sh"
-    echo "     (支持自动下载，失败时可手动指定文件)"
     echo ""
     echo "  2. 添加代理订阅:"
     echo "     ./mihomo-sub.sh"
@@ -381,4 +475,9 @@ echo "     claw-up      - 启动服务"
 echo "     claw-ps      - 查看状态"
 echo "     claw-check   - 健康检查"
 echo "     mih-sub      - 管理订阅"
+
+if [ "$USE_VLLM" = true ]; then
+    echo "     test-vllm    - 测试 vLLM 连接"
+fi
+
 echo ""

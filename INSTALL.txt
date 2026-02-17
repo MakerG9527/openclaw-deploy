@@ -2,7 +2,7 @@
 OpenClaw 快速部署 - 安装指南
 ============================================
 
-⚡ 自动路径识别版 - 支持任意服务器部署
+⚡ 自动路径识别版 - 支持 Ollama / vLLM / API 三种模型后端
 
 1. 克隆部署包
    git clone https://github.com/MakerG9527/openclaw-deploy.git openclaw
@@ -10,6 +10,11 @@ OpenClaw 快速部署 - 安装指南
 
 2. 运行交互式配置
    ./setup.sh
+
+   模型后端选择：
+   - 选项 1: Ollama（易用，适合本地开发）
+   - 选项 2: vLLM（高性能，适合生产环境）
+   - 选项 3: API（使用 Moonshot/Kimi 等第三方服务）
 
 3. 安装 Mihomo（如未安装）
    ./install-mihomo.sh
@@ -21,8 +26,31 @@ OpenClaw 快速部署 - 安装指南
    source ~/.bashrc
    claw-up
 
+   注意：如选择 vLLM，需单独启动 vLLM 服务：
+   python -m vllm.entrypoints.openai.api_server --model <模型名> --port 8000
+
 6. 验证部署
    claw-check
+
+============================================
+模型后端说明
+============================================
+
+Ollama:
+  • 简单易用，一键下载模型
+  • 适合个人开发和测试
+  • 支持本地和远程部署
+
+vLLM:
+  • 高性能推理引擎
+  • 支持高并发请求
+  • 适合生产环境
+  • 需要手动启动服务
+
+API:
+  • 使用第三方 AI 服务
+  • 无需本地 GPU
+  • 如 Moonshot、Kimi、OpenAI 等
 
 ============================================
 新特性：自动路径识别
@@ -52,6 +80,9 @@ claw-check     健康检查
 claw-log       查看 OpenClaw 日志
 mih-log        查看 Mihomo 日志
 mih-sub        管理代理订阅
+test-vllm      测试 vLLM 连接
+test-ollama    测试 Ollama 连接
+test-proxy     测试代理连通性
 
 ============================================
 详细说明
@@ -62,3 +93,6 @@ mih-sub        管理代理订阅
 
 或访问项目主页：
   https://github.com/MakerG9527/openclaw-deploy
+
+vLLM 文档：
+  https://docs.vllm.ai/en/latest/
